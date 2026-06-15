@@ -2,7 +2,7 @@ require 'time'
 
 class ArchivesSpaceService < Sinatra::Base
 
-  def self.next_available_number_for_year(year)
+  def next_available_number_for_year(year)
     used_numbers = DB.open(true) do |db|
       db[:accession]
         .where(:id_0 => year)
@@ -12,7 +12,7 @@ class ArchivesSpaceService < Sinatra::Base
 
     numeric_values = used_numbers.each_with_object({}) do |raw_value, acc|
       value = raw_value.to_s.strip
-      next unless value.match?(/\A\d+\z/)
+      next unless value =~ /\A\d+\z/
 
       acc[value.to_i] = true
     end
@@ -29,7 +29,7 @@ class ArchivesSpaceService < Sinatra::Base
     .returns([200, "{'year', 'YYYY', 'number', N}"]) \
   do
     year = Time.now.strftime('%Y')
-    number = self.class.next_available_number_for_year(year)
+    number = next_available_number_for_year(year)
 
     json_response(:year => year, :number => number)
   end
