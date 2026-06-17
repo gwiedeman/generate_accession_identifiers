@@ -1,12 +1,13 @@
 require 'time'
+require 'sequel'
 
 class ArchivesSpaceService < Sinatra::Base
 
   def next_available_number_for_year(year)
     used_numbers = DB.open(true) do |db|
       db[:accession]
-        .where(:id_0 => year)
-        .exclude(:id_1 => nil)
+        .where(id_0: year)
+        .where(id_1: Sequel.not_eq(nil))
         .select_map(:id_1)
     end
 
