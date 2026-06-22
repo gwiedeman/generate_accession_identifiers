@@ -8,7 +8,7 @@ class ArchivesSpaceService < Sinatra::Base
     
     used_numbers = DB.open(true) do |db|
       puts "[DEBUG] Opening database connection"
-      puts db[:accession].columns.inspect
+      puts "[DEBUG] Columns: #{db[:accession].columns.inspect}"
       result = db[:accession]
         .where(id_0: year)
         .exclude(id_1: nil)
