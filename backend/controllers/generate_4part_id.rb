@@ -11,7 +11,7 @@ class ArchivesSpaceService < Sinatra::Base
       
       result = db[:accession]
         .where(id_0: year)
-        .where_not(id_1: nil)
+        .exclude(id_1: nil)
         .select_map(:id_1)
       
       puts "[DEBUG] Query result type: #{result.class}"
