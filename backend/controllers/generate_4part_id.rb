@@ -1,48 +1,61 @@
 require 'time'
 require 'sequel'
+require 'json'
 
 class ArchivesSpaceService < Sinatra::Base
 
-  def next_available_number_for_year(year)
-    puts "[DEBUG] Starting next_available_number_for_year with year: #{year}"
-    
+  def next_available_number_for_year(year, repo_id = nil)
+    puts "[DEBUG] Starting next_available_number_for_year with year: #{year}, repo_id: #{repo_id.inspect}"
+
     used_numbers = DB.open(true) do |db|
       puts "[DEBUG] Opening database connection"
-      puts "[DEBUG] Columns: #{db[:accession].columns.inspect}"
-      result = db[:accession]
-        .where(id_0: year)
-        .exclude(id_1: nil)
-        .select_map(:id_1)
-      
-      puts "[DEBUG] Query result type: #{result.class}"
-      puts "[DEBUG] Query result count: #{result.count}"
-      puts "[DEBUG] Query result sample: #{result.first(5).inspect}"
-      
-      result
+
+      ds = db[:accession].exclude(identifier: nil)
+      ds = ds.where(repo_id: repo_id) if repo_id
+
+      rows = ds.select_map(:identifier)
+
+      puts "[DEBUG] Identifier row count: #{rows.count}"
+      puts "[DEBUG] Identifier sample: #{rows.first(5).inspect}"
+
+      numbers = rows.map do |ident|
+        parsed =
+          case ident
+          when String
+            begin
+              JSON.parse(ident)
+            rescue JSON::ParserError
+              nil
+            end
+          when Array
+            ident
+          else
+            nil
+          end
+
+        # Expecting something like ["2026", "001", nil, nil]
+        next nil unless parsed.is_a?(Array)
+        next nil unless parsed[0].to_s == year.to_s
+        next nil unless parsed[1].to_s =~ /\A\d+\z/
+
+        parsed[1].to_i
+      end.compact
+
+      puts "[DEBUG] Parsed number count: #{numbers.count}"
+      puts "[DEBUG] Parsed number sample: #{numbers.sort.first(20).inspect}"
+
+      numbers
     end
 
-    numeric_values = used_numbers.each_with_object({}) do |raw_value, acc|
-      puts "[DEBUG] Processing raw_value: #{raw_value.inspect} (class: #{raw_value.class})"
-      
-      value = raw_value.to_s.strip
-      puts "[DEBUG] After to_s.strip: #{value.inspect}"
-      
-      if value =~ /\A\d+\z/
-        puts "[DEBUG] Value matches numeric pattern, converting: #{value.to_i}"
-        acc[value.to_i] = true
-      else
-        puts "[DEBUG] Value does NOT match numeric pattern, skipping"
-      end
-      
-      next unless value =~ /\A\d+\z/
+    numeric_values = used_numbers.each_with_object({}) do |n, acc|
+      acc[n] = true
     end
 
-    puts "[DEBUG] Final numeric_values hash: #{numeric_values.inspect}"
-    
+    puts "[DEBUG] Final numeric_values hash keys sample: #{numeric_values.keys.sort.first(20).inspect}"
+
     candidate = 1
-    puts "[DEBUG] Starting candidate search from: #{candidate}"
     candidate += 1 while numeric_values[candidate]
-    
+
     puts "[DEBUG] Final candidate number: #{candidate}"
     candidate
   end
@@ -54,14 +67,17 @@ class ArchivesSpaceService < Sinatra::Base
     .returns([200, "{'year', 'YYYY', 'number', N}"]) \
   do
     puts "[DEBUG] Endpoint called"
-    
+
     year = Time.now.strftime('%Y')
     puts "[DEBUG] Current year: #{year}"
-    
+
+    # If you know the repo, set it here; otherwise nil searches all repos.
+    repo_id = nil
+
     begin
-      number = next_available_number_for_year(year)
+      number = next_available_number_for_year(year, repo_id)
       puts "[DEBUG] Calculated number: #{number}"
-      
+
       json_response(:year => year, :number => number)
     rescue => e
       puts "[DEBUG] ERROR: #{e.class}"
