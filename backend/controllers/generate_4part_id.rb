@@ -7,7 +7,7 @@ class ArchivesSpaceService < Sinatra::Base
     used_numbers = DB.open(true) do |db|
       db[:accession]
         .where(id_0: year)
-        .where(id_1: Sequel.not_eq(nil))
+        .where_not(id_1: nil)
         .select_map(:id_1)
     end
 
