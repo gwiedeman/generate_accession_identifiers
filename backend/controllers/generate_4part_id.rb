@@ -5,18 +5,18 @@ require 'json'
 class ArchivesSpaceService < Sinatra::Base
 
   def next_available_number_for_year(year, repo_id = nil)
-    puts "[DEBUG] Starting next_available_number_for_year with year: #{year}, repo_id: #{repo_id.inspect}"
+    #puts "DEBUG-Accession-ID Starting next_available_number_for_year with year: #{year}, repo_id: #{repo_id.inspect}"
 
     used_numbers = DB.open(true) do |db|
-      puts "[DEBUG] Opening database connection"
+      #puts "DEBUG-Accession-ID Opening database connection"
 
       ds = db[:accession].exclude(identifier: nil)
       ds = ds.where(repo_id: repo_id) if repo_id
 
       rows = ds.select_map(:identifier)
 
-      puts "[DEBUG] Identifier row count: #{rows.count}"
-      puts "[DEBUG] Identifier sample: #{rows.first(5).inspect}"
+      #puts "DEBUG-Accession-ID Identifier row count: #{rows.count}"
+      #puts "DEBUG-Accession-ID Identifier sample: #{rows.first(5).inspect}"
 
       numbers = rows.map do |ident|
         parsed =
@@ -41,8 +41,8 @@ class ArchivesSpaceService < Sinatra::Base
         parsed[1].to_i
       end.compact
 
-      puts "[DEBUG] Parsed number count: #{numbers.count}"
-      puts "[DEBUG] Parsed number sample: #{numbers.sort.first(20).inspect}"
+      #puts "DEBUG-Accession-ID Parsed number count: #{numbers.count}"
+      #puts "DEBUG-Accession-ID Parsed number sample: #{numbers.sort.first(20).inspect}"
 
       numbers
     end
@@ -51,12 +51,12 @@ class ArchivesSpaceService < Sinatra::Base
       acc[n] = true
     end
 
-    puts "[DEBUG] Final numeric_values hash keys sample: #{numeric_values.keys.sort.first(20).inspect}"
+    #puts "DEBUG-Accession-ID Final numeric_values hash keys sample: #{numeric_values.keys.sort.first(20).inspect}"
 
     candidate = 1
     candidate += 1 while numeric_values[candidate]
 
-    puts "[DEBUG] Final candidate number: #{candidate}"
+    #puts "DEBUG-Accession-ID Final candidate number: #{candidate}"
     candidate
   end
 
@@ -66,23 +66,23 @@ class ArchivesSpaceService < Sinatra::Base
     .permissions([])
     .returns([200, "{'year', 'YYYY', 'number', N}"]) \
   do
-    puts "[DEBUG] Endpoint called"
+    #puts "DEBUG-Accession-ID Endpoint called"
 
     year = Time.now.strftime('%Y')
-    puts "[DEBUG] Current year: #{year}"
+    #puts "DEBUG-Accession-ID Current year: #{year}"
 
     # If you know the repo, set it here; otherwise nil searches all repos.
     repo_id = nil
 
     begin
       number = next_available_number_for_year(year, repo_id)
-      puts "[DEBUG] Calculated number: #{number}"
+      #puts "DEBUG-Accession-ID Calculated number: #{number}"
 
       json_response(:year => year, :number => number)
     rescue => e
-      puts "[DEBUG] ERROR: #{e.class}"
-      puts "[DEBUG] ERROR MESSAGE: #{e.message}"
-      puts "[DEBUG] ERROR BACKTRACE:"
+      puts "DEBUG-Accession-ID ERROR: #{e.class}"
+      puts "DEBUG-Accession-ID ERROR MESSAGE: #{e.message}"
+      puts "DEBUG-Accession-ID ERROR BACKTRACE:"
       puts e.backtrace.first(10).map { |line| "  #{line}" }.join("\n")
       raise
     end
